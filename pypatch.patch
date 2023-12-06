@@ -22,3 +22,51 @@ index f58c7198..2aa7cd75 100644
  
  destdir = get_option('libdir') / ('python' + py3_dep.version()) / 'site-packages' / 'libcamera'
  
+diff --git a/src/py/libcamera/py_camera_manager.cpp b/src/py/libcamera/py_camera_manager.cpp
+index 9ccb7aad..7c2b06f5 100644
+--- a/src/py/libcamera/py_camera_manager.cpp
++++ b/src/py/libcamera/py_camera_manager.cpp
+@@ -42,6 +42,17 @@ PyCameraManager::~PyCameraManager()
+ 	LOG(Python, Debug) << "~PyCameraManager()";
+ }
+ 
++void PyCameraManager::restart()
++{
++	cameraManager_->stop();
++	// We first reset to null pointer, so the old
++	// CameraManager gets deleted
++	cameraManager_.reset();
++	// Then, we replace it with a new CameraManager.
++	cameraManager_.reset(new CameraManager());
++	cameraManager_->start();
++}
++
+ py::list PyCameraManager::cameras()
+ {
+ 	/*
+diff --git a/src/py/libcamera/py_camera_manager.h b/src/py/libcamera/py_camera_manager.h
+index 3574db23..570035b3 100644
+--- a/src/py/libcamera/py_camera_manager.h
++++ b/src/py/libcamera/py_camera_manager.h
+@@ -19,6 +19,8 @@ public:
+ 	PyCameraManager();
+ 	~PyCameraManager();
+ 
++	void restart();
++
+ 	pybind11::list cameras();
+ 	std::shared_ptr<Camera> get(const std::string &name) { return cameraManager_->get(name); }
+ 
+diff --git a/src/py/libcamera/py_main.cpp b/src/py/libcamera/py_main.cpp
+index bce08218..96deaa01 100644
+--- a/src/py/libcamera/py_main.cpp
++++ b/src/py/libcamera/py_main.cpp
+@@ -149,6 +149,8 @@ PYBIND11_MODULE(_libcamera, m)
+ 			return cm;
+ 		})
+ 
++		.def("restart", &PyCameraManager::restart)
++
+ 		.def_property_readonly_static("version", [](py::object /* self */) { return PyCameraManager::version(); })
+ 		.def("get", &PyCameraManager::get, py::keep_alive<0, 1>())
+ 		.def_property_readonly("cameras", &PyCameraManager::cameras)
